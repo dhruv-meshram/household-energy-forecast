@@ -259,7 +259,29 @@ PLOTLY_THEME = dict(
 # ─────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_model_and_scalers():
-    model    = keras.models.load_model(MODEL_PATH)
+    # ── Robust model loader ───────────────────────────────────────
+    # The model was saved with TF 2.13+ which added `time_major` to LSTM.
+    # Older TF versions raise "Unrecognized keyword arguments: time_major".
+    # We handle this by subclassing LSTM to silently drop unknown kwargs.
+    def _load_model_safe(path):
+        try:
+            return keras.models.load_model(path)
+        except TypeError as e:
+            if "time_major" not in str(e) and "unrecognized keyword" not in str(e).lower():
+                raise  # re-raise unrelated errors
+
+            # Fallback: custom LSTM that ignores unknown kwargs
+            class CompatLSTM(keras.layers.LSTM):
+                def __init__(self, *args, **kwargs):
+                    kwargs.pop("time_major", None)   # drop the offending arg
+                    super().__init__(*args, **kwargs)
+
+            return keras.models.load_model(
+                path,
+                custom_objects={"LSTM": CompatLSTM},
+            )
+
+    model    = _load_model_safe(MODEL_PATH)
     scaler_X = joblib.load(SCALER_X_PATH)
     scaler_y = joblib.load(SCALER_Y_PATH)
     with open(FEATURES_PATH) as f:
