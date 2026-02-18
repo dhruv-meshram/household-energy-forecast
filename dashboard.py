@@ -230,7 +230,12 @@ st.markdown("""
 # ─────────────────────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────────────────────
-MODEL_PATH    = "lstm_forecasting_model.keras"
+# Prefer the portable .h5 format (cross-TF-version compatible);
+# fall back to .keras if .h5 hasn't been generated yet.
+import os as _os
+_H5_PATH    = "lstm_forecasting_model.h5"
+_KERAS_PATH = "lstm_forecasting_model.keras"
+MODEL_PATH    = _H5_PATH if _os.path.exists(_H5_PATH) else _KERAS_PATH
 SCALER_X_PATH = "scaler_X_forecasting.pkl"
 SCALER_Y_PATH = "scaler_y_forecasting.pkl"
 FEATURES_PATH = "feature_list_forecasting.json"
@@ -259,27 +264,62 @@ PLOTLY_THEME = dict(
 # ─────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_model_and_scalers():
-    # ── Robust model loader ───────────────────────────────────────
-    # The model was saved with TF 2.13+ which added `time_major` to LSTM.
-    # Older TF versions raise "Unrecognized keyword arguments: time_major".
-    # We handle this by subclassing LSTM to silently drop unknown kwargs.
+    # ── Robust model loader ───────────────────────────────────────────────
+    # .h5 (HDF5) stores weights by index → immune to layer-path naming
+    # changes between TF versions (Bidirectional LSTM weight name issue).
+    # .keras stores weights by path → breaks across TF minor versions.
+    # Strategy: try plain load first; on any weight/kwarg error, retry
+    # with CompatBiLSTM that strips unknown kwargs from both LSTM and
+    # Bidirectional layers.
+    def _compat_loader(path):
+        """Load with custom objects that tolerate unknown LSTM kwargs."""
+        class CompatLSTMCell(keras.layers.LSTMCell):
+            def __init__(self, *args, **kwargs):
+                kwargs.pop("time_major", None)
+                super().__init__(*args, **kwargs)
+
+        class CompatLSTM(keras.layers.LSTM):
+            def __init__(self, *args, **kwargs):
+                kwargs.pop("time_major", None)
+                super().__init__(*args, **kwargs)
+
+        class CompatBiLSTM(keras.layers.Bidirectional):
+            def __init__(self, *args, **kwargs):
+                kwargs.pop("time_major", None)
+                super().__init__(*args, **kwargs)
+
+        return keras.models.load_model(
+            path,
+            custom_objects={
+                "LSTM": CompatLSTM,
+                "LSTMCell": CompatLSTMCell,
+                "Bidirectional": CompatBiLSTM,
+            },
+        )
+
     def _load_model_safe(path):
+        # First attempt: plain load (works when TF versions match exactly)
         try:
             return keras.models.load_model(path)
-        except TypeError as e:
-            if "time_major" not in str(e) and "unrecognized keyword" not in str(e).lower():
-                raise  # re-raise unrelated errors
+        except Exception as e1:
+            err = str(e1).lower()
+            # Only retry on known version-mismatch errors
+            if not any(k in err for k in [
+                "time_major", "unrecognized keyword",
+                "expected 3 variables", "expected 0 variables",
+                "lstm_cell", "variable",
+            ]):
+                raise  # unrelated error — surface it
 
-            # Fallback: custom LSTM that ignores unknown kwargs
-            class CompatLSTM(keras.layers.LSTM):
-                def __init__(self, *args, **kwargs):
-                    kwargs.pop("time_major", None)   # drop the offending arg
-                    super().__init__(*args, **kwargs)
-
-            return keras.models.load_model(
-                path,
-                custom_objects={"LSTM": CompatLSTM},
-            )
+        # Second attempt: compat loader with custom objects
+        try:
+            return _compat_loader(path)
+        except Exception as e2:
+            raise RuntimeError(
+                f"Could not load model from '{path}'.\n"
+                f"First error : {e1}\n"
+                f"Second error: {e2}"
+            ) from e2
 
     model    = _load_model_safe(MODEL_PATH)
     scaler_X = joblib.load(SCALER_X_PATH)
