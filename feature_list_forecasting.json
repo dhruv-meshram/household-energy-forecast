@@ -1,0 +1,22 @@
+[
+  "hour_sin",
+  "hour_cos",
+  "day_sin",
+  "day_cos",
+  "month_sin",
+  "month_cos",
+  "is_weekend",
+  "power_lag_1h",
+  "power_lag_3h",
+  "power_lag_6h",
+  "power_lag_12h",
+  "power_lag_1day",
+  "power_lag_1week",
+  "power_rolling_mean_3h",
+  "power_rolling_mean_6h",
+  "power_rolling_mean_24h",
+  "power_rolling_std_3h",
+  "power_rolling_std_24h",
+  "power_rolling_min_24h",
+  "power_rolling_max_24h"
+]

@@ -1,0 +1,38 @@
+# ── Large raw data (127 MB — exceeds GitHub's 100 MB limit) ──
+household_power_consumption.txt
+
+# ── Training notebooks (optional — large output cells) ──
+train-lstm-forecasting.ipynb
+train-lstm.ipynb
+train.ipynb
+
+# ── Redundant / old model files ──
+best_lstm_forecasting_model.keras
+best_lstm_model.keras
+lstm_energy_forecasting_model.keras
+
+# ── Old scalers (not used by dashboard) ──
+scaler_X.pkl
+scaler_y.pkl
+
+# ── Python cache ──
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# ── Jupyter checkpoints ──
+.ipynb_checkpoints/
+
+# ── OS files ──
+.DS_Store
+Thumbs.db
+
+# ── Virtual environments ──
+venv/
+.venv/
+env/
+
+# ── IDE ──
+.vscode/
+.idea/
