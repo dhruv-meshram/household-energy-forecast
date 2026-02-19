@@ -79,7 +79,7 @@ st.markdown("""
   /* Metric value */
   div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     color: #58a6ff !important;
-    font-size: 1.8rem !important;
+    font-size: 1.3rem !important;
     font-weight: 700 !important;
   }
 
@@ -453,7 +453,7 @@ with st.sidebar:
     <div style='text-align:center; padding: 16px 0 8px 0;'>
       <div style='font-size:2.5rem;'>⚡</div>
       <div style='font-size:1.1rem; font-weight:700; color:#58a6ff;'>EnergyForecast</div>
-      <div style='font-size:0.72rem; color:#8b949e; margin-top:4px;'>LSTM · 2026 Edition</div>
+      <div style='font-size:0.72rem; color:#8b949e; margin-top:4px;'>· LSTM ·</div>
     </div>
     <hr style='margin:12px 0;'>
     """, unsafe_allow_html=True)
@@ -468,7 +468,6 @@ with st.sidebar:
     )
     n_steps = HORIZONS[horizon_label]
 
-    show_confidence = st.checkbox("Show Confidence Band", value=True)
     show_history    = st.checkbox("Show Historical Context", value=True)
     history_hours   = st.slider("History Window (hours)", 6, 72, 24, step=6)
 
@@ -663,23 +662,21 @@ with tab_forecast:
 
         # ── KPI Row ──────────────────────────────────────────
         st.markdown("<div class='section-header'>📊 Forecast Summary</div>", unsafe_allow_html=True)
-        k1, k2, k3, k4, k5 = st.columns(5)
+        k1, k2, k3, k4 = st.columns(4)
 
         mean_val = preds["value"].mean()
         max_val  = preds["value"].max()
         min_val  = preds["value"].min()
-        std_val  = preds["value"].std()
         peak_ts  = preds["value"].idxmax()
 
         # Compare to historical mean
         hist_mean = watts_to_kw(raw["Global_active_power"]).mean() if use_kw else raw["Global_active_power"].mean()
         delta_pct = (mean_val - hist_mean) / hist_mean * 100
 
-        k1.metric("Mean Demand",   f"{mean_val:.2f} {unit_label}", f"{delta_pct:+.1f}% vs hist.")
-        k2.metric("Peak Demand",   f"{max_val:.2f} {unit_label}")
-        k3.metric("Min Demand",    f"{min_val:.2f} {unit_label}")
-        k4.metric("Std Deviation", f"{std_val:.2f} {unit_label}")
-        k5.metric("Peak Time",     peak_ts.strftime("%H:%M"), peak_ts.strftime("%b %d"))
+        k1.metric("Mean Demand", f"{mean_val:.2f} {unit_label}", f"{delta_pct:+.1f}% vs hist.")
+        k2.metric("Peak Demand", f"{max_val:.2f} {unit_label}")
+        k3.metric("Min Demand",  f"{min_val:.2f} {unit_label}")
+        k4.metric("Peak Time",   peak_ts.strftime("%H:%M"), peak_ts.strftime("%b %d"))
 
         # ── Main Forecast Chart ───────────────────────────────
         st.markdown("<div class='section-header'>🔮 Forecast Visualization</div>", unsafe_allow_html=True)
@@ -700,20 +697,6 @@ with tab_forecast:
                 opacity=0.7,
             ))
 
-        # Confidence band (±10% simple heuristic)
-        if show_confidence:
-            upper = preds["value"] * 1.10
-            lower = preds["value"] * 0.90
-            fig.add_trace(go.Scatter(
-                x=pd.concat([preds.index.to_series(), preds.index.to_series()[::-1]]),
-                y=pd.concat([upper, lower[::-1]]),
-                fill="toself",
-                fillcolor="rgba(88,166,255,0.08)",
-                line=dict(color="rgba(0,0,0,0)"),
-                name="±10% Band",
-                showlegend=True,
-                hoverinfo="skip",
-            ))
 
         # Forecast line
         fig.add_trace(go.Scatter(
