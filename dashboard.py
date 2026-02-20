@@ -1151,6 +1151,56 @@ with tab_model:
     """, unsafe_allow_html=True)
 
 
+    # ── Model Inputs & Outputs Explanation ────────────────────
+    st.markdown("<div class='section-header'>📝 Model Inputs and Outputs Explanation</div>", unsafe_allow_html=True)
+
+    with st.expander("Show Detailed Input Features", expanded=False):
+        st.markdown("""
+        ### 🔹 Model Inputs (20 Features)
+        The model uses **20 input features** for every prediction. These features capture time patterns through cyclical encoding and historical consumption dynamics through lags and rolling statistics.
+
+        #### 1. Temporal Features (7)
+        *Captures the cyclical nature of time (daily, weekly, yearly patterns).*
+        - **`hour_sin`, `hour_cos`**: Cyclic representation of the **hour of the day** (0-23). Preserves 23:00 being close to 00:00.
+        - **`day_sin`, `day_cos`**: Cyclic representation of the **day of the week** (Mon-Sun).
+        - **`month_sin`, `month_cos`**: Cyclic representation of the **month** (Jan-Dec). Captures seasonal effects.
+        - **`is_weekend`**: Binary flag (1 if Saturday/Sunday, 0 otherwise). Captures weekend consumption behavior changes.
+
+        #### 2. Lag Features (6)
+        *Snapshot of power consumption at specific past intervals.*
+        - **`power_lag_1h`** (12 steps ago): Power consumption 1 hour ago.
+        - **`power_lag_3h`** (36 steps ago): Power consumption 3 hours ago.
+        - **`power_lag_6h`** (72 steps ago): Power consumption 6 hours ago.
+        - **`power_lag_12h`** (144 steps ago): Power consumption 12 hours ago.
+        - **`power_lag_1day`** (288 steps ago): Power consumption exactly 1 day ago (same time yesterday).
+        - **`power_lag_1week`** (2016 steps ago): Power consumption exactly 1 week ago (same time/day last week).
+
+        #### 3. Rolling Statistics (7)
+        *Captures recent trends, volatility, and extremes over different time windows.*
+        - **`power_rolling_mean_3h`**: Average power over the last 3 hours. (Short-term trend)
+        - **`power_rolling_mean_6h`**: Average power over the last 6 hours. (Medium-term trend)
+        - **`power_rolling_mean_24h`**: Average power over the last 24 hours. (Daily baseline)
+        - **`power_rolling_std_3h`**: Standard deviation over the last 3 hours. (Recent volatility)
+        - **`power_rolling_std_24h`**: Standard deviation over the last 24 hours. (Daily volatility)
+        - **`power_rolling_min_24h`**: Minimum power recorded in the last 24 hours.
+        - **`power_rolling_max_24h`**: Maximum power recorded in the last 24 hours.
+        """)
+
+    st.markdown("""
+    <div class='glass-card'>
+      <div style='font-size:1rem; font-weight:600; color:#58a6ff; margin-bottom:12px;'>
+        🔹 Model Output
+      </div>
+      <ul style='color:#e6edf3; font-size:0.9rem; line-height:1.6;'>
+        <li><strong>Target Variable:</strong> <code>Global_active_power</code></li>
+        <li><strong>Unit:</strong> Watts (W) <span style='color:#8b949e;'>(Converted from original kW)</span></li>
+        <li><strong>Prediction Structure:</strong> The model predicts a <strong>single value</strong> representing the Global Active Power for the <strong>next 5-minute interval</strong>.</li>
+        <li><strong>Multi-step Forecasting:</strong> For horizons > 5 mins (e.g., 6h, 24h), the model is run recursively: the predicted value is fed back as input (updating lags and rolling stats) to predict the subsequent step.</li>
+      </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 # ═══════════════════════════════════════════════════════════════
 # TAB 4 — RAW DATA
 # ═══════════════════════════════════════════════════════════════
